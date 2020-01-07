@@ -28,12 +28,16 @@ VTK_MODULE_INIT( vtkRenderingFreeType );
 #include <vtkColorTransferFunction.h>
 #include <vtkScalarBarActor.h>
 #include <vtkTextRenderer.h>
+#include <vtkPolyDataNormals.h>
+#include <vtkDataSetAttributes.h>
+#include <vtkWarpScalar.h>
+#include <vtkNamedColors.h>
+
+
 
 // standard includes
 #include <vector>
 #include <algorithm>
-
-
 
 
 // ----- utility functions -----
@@ -121,21 +125,54 @@ int main(int argc, char * argv[])
 	vtkSmartPointer<vtkDEMReader> source = vtkSmartPointer<vtkDEMReader>::New();
 	source->SetFileName( "../data/SainteHelens.dem" );
 	
-    // 2. create filters
-	// a) contour filter
-	vtkSmartPointer<vtkContourFilter> contourFilter = vtkSmartPointer<vtkContourFilter>::New();
-	// use source as filter input
-	contourFilter->SetInputConnection( source->GetOutputPort() );
-	// set the height value at which the contour line shall be drawn
-	contourFilter->SetValue( 0, 1800 );
-	
+
+	// 2. create filters
 	//b) gradient filter
 	vtkSmartPointer<vtkImageGradientMagnitude> gradientFilter = vtkSmartPointer<vtkImageGradientMagnitude>::New();
 	// how many dimensions does the data have
 	gradientFilter->SetDimensionality( 2 );
 	// use source as filter input
 	gradientFilter->SetInputConnection( source->GetOutputPort() );
+
+	//c) warped filter
+	vtkSmartPointer<vtkWarpScalar> warpFilter = vtkSmartPointer<vtkWarpScalar>::New();
+	// set scale factor to 2
+	warpFilter->SetScaleFactor(2);
+	// use source as filter input
+	warpFilter->SetInputConnection(source->GetOutputPort());
+
+    // a) contour filter
+	vtkSmartPointer<vtkContourFilter> contourFilter = vtkSmartPointer<vtkContourFilter>::New();
+	// use source as filter input
+	contourFilter->SetInputConnection(warpFilter->GetOutputPort());
+	// set the height value at which the contour line shall be drawn
 	
+	//*********** Possibly use for loop instead of using directly setting them
+	/*for (int i = 0; i < 19; i++) {
+		int height = 790;
+		contourFilter->SetValue(i, height);
+		height = height + 90;
+	}*/
+	contourFilter->SetValue(0, 700);
+	contourFilter->SetValue(1, 790);
+	contourFilter->SetValue(2, 880);
+	contourFilter->SetValue(3, 970);
+	contourFilter->SetValue(4, 1060);
+	contourFilter->SetValue(5, 1150);
+	contourFilter->SetValue(6, 1240);
+	contourFilter->SetValue(7, 1330);
+	contourFilter->SetValue(8, 1420);
+	contourFilter->SetValue(9, 1510);
+	contourFilter->SetValue(10, 1600);
+	contourFilter->SetValue(11, 1790);
+	contourFilter->SetValue(12, 1880);
+	contourFilter->SetValue(13, 1970);
+	contourFilter->SetValue(14, 2060);
+	contourFilter->SetValue(15, 2150);
+	contourFilter->SetValue(16, 2240);
+	contourFilter->SetValue(17, 2330);
+	contourFilter->SetValue(18, 2420);
+	contourFilter->SetValue(19, 2510);
 
 	// 3.  create mappers
 	// a) image mapper, show the data as 2D image with standard color transfer function
@@ -160,6 +197,13 @@ int main(int argc, char * argv[])
 	// set the range of the gradient magnitudes in order to correctly map the colors
 	gradientMapper->SetScalarRange( 0, 2 );
 	
+	// d) warp mapper
+	vtkSmartPointer<vtkDataSetMapper> warpMapper = vtkSmartPointer<vtkDataSetMapper>::New();
+	// connect to the gradient filter output (the pipeline is source->warpFilter->warpMapper->...)
+	warpMapper->SetInputConnection(warpFilter->GetOutputPort());
+	// set the range of the gradient magnitudes in order to correctly map the colors
+	warpMapper->SetScalarRange(0, 2);
+
     // -- end of basic visualization network definition --
 
 
@@ -167,11 +211,13 @@ int main(int argc, char * argv[])
 	vtkSmartPointer<vtkRenderWindow> imageWindow = createRenderWindowFromMapper( imageMapper );
 	vtkSmartPointer<vtkRenderWindow> contourWindow = createRenderWindowFromMapper( contourMapper );
 	vtkSmartPointer<vtkRenderWindow> gradientWindow = createRenderWindowFromMapper( gradientMapper );
-	
+	vtkSmartPointer<vtkRenderWindow> warpWindow = createRenderWindowFromMapper( warpMapper);
+
     // 5. successively show each window and allow user interaction (until it is closed)
 	doRenderingAndInteraction( imageWindow );
 	doRenderingAndInteraction( contourWindow );
 	doRenderingAndInteraction( gradientWindow );
+	doRenderingAndInteraction( warpWindow);
 
     return 0;
 }
